@@ -286,12 +286,12 @@ const ConnectionUnconfiguredWarning = () => {
     <Notification key="opencast-connection" isDanger>
       <Trans i18nKey="warning-missing-connection-settings">
         Warning.
-        <Link
-          to={{ pathname: "/settings", search: location.search }}
+        <Styled.a
+          href="mailto:mediatechnologies@manchester.ac.uk"
           sx={{ variant: 'styles.a', color: '#ff2' }}
         >
           settings
-        </Link>
+        </Styled.a>
       </Trans>
     </Notification>
   );
