@@ -46,6 +46,10 @@ const initialState = () => ({
 
   title: '',
   presenter: '',
+  email: '',
+  series: { key: '-1', value: '' },
+  visibility: {key: '-1', value: ''},
+  edit: false,
 
   upload: {
     error: null,
@@ -134,16 +138,16 @@ const reducer = (state, action) => {
       return { ...state, recordings };
 
     case 'UPLOAD_ERROR':
-      return { ...state, upload: { ...state.upload, error: action.payload, state: STATE_ERROR }};
+      return { ...state, upload: { ...state.upload, error: action.payload, state: STATE_ERROR } };
 
     case 'UPLOAD_FAILURE':
-      return { ...state, upload: { ...state.upload, error: action.payload, state: STATE_ERROR }};
+      return { ...state, upload: { ...state.upload, error: action.payload, state: STATE_ERROR } };
 
     case 'UPLOAD_REQUEST':
-      return { ...state, upload: { ...state.upload, error: null, state: STATE_UPLOADING }};
+      return { ...state, upload: { ...state.upload, error: null, state: STATE_UPLOADING } };
 
     case 'UPLOAD_SUCCESS':
-      return { ...state, upload: { ...state.upload, error: null, state: STATE_UPLOADED }};
+      return { ...state, upload: { ...state.upload, error: null, state: STATE_UPLOADED } };
 
     case 'UPLOAD_PROGRESS_UPDATE':
       return { ...state, upload: {
@@ -163,6 +167,18 @@ const reducer = (state, action) => {
 
     case 'UPDATE_PRESENTER':
       return { ...state, presenter: action.payload };
+
+    case 'UPDATE_EMAIL':
+      return { ...state, email: action.payload };
+
+    case 'UPDATE_SERIES':
+      return { ...state, series: action.payload };
+
+    case 'UPDATE_VISIBILITY':
+      return { ...state, visibility: action.payload };
+
+    case 'UPDATE_EDIT':
+      return { ...state, edit: action.payload };
 
     case 'RESET':
       return initialState();

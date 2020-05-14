@@ -26,6 +26,7 @@ import { ActionButtons } from '../elements';
 import FormField from './form-field';
 import RecordingPreview from './recording-preview';
 
+import { getIngestInfo, isCourseId } from '../../../manchester';
 
 const LAST_PRESENTER_KEY = 'lastPresenter';
 
@@ -37,7 +38,7 @@ export default function SaveCreation(props) {
   const settings = useSettings();
   const { t } = useTranslation();
   const opencast = useOpencast();
-  const { recordings, upload: uploadState, title, presenter } = useStudioState();
+  const { recordings, upload: uploadState, title, presenter, email, series, visibility, edit } = useStudioState();
   const dispatch = useDispatch();
 
   function handleBack() {
@@ -113,12 +114,30 @@ export default function SaveCreation(props) {
   });
 
   async function handleUpload() {
-    if (title === '' || presenter === '') {
+    if (title === '' || presenter === '' || series.key === '-1' || visibility.key === '-1' || email === '') {
       dispatch({ type: 'UPLOAD_ERROR', payload: t('save-creation-form-invalid') });
       return;
     }
 
+    settings.upload = {
+      ...settings.upload, metaData: {
+        title: title,
+        presenter: presenter,
+        email: email,
+        series: series,
+        visibility: visibility,
+        edit: edit,
+      }
+    };
+
     dispatch({ type: 'UPLOAD_REQUEST' });
+    if (settings.upload?.ingestInfoUrl) {
+      const result = await getIngestInfo(settings.upload.ingestInfoUrl, series, visibility);
+      console.debug('Ingest Info', result);
+      settings.upload.seriesId = result.series.seriesId;
+      settings.upload.ingestInfo = result;
+    }
+
     progressHistory.push({
       timestamp: Date.now(),
       progress: 0,
@@ -180,7 +199,7 @@ export default function SaveCreation(props) {
   return (
     <Container sx={{ display: 'flex', flexDirection: 'column', flex: '1 0 auto' }}>
       <Styled.h1 sx={{ textAlign: 'center', fontSize: ['26px', '30px', '32px'] }}>
-        { possiblyDone ? t('save-creation-title-done') : t('save-creation-title') }
+        {possiblyDone ? t('save-creation-title-done') : t('save-creation-title')}
       </Styled.h1>
 
       <div sx={{
@@ -200,7 +219,7 @@ export default function SaveCreation(props) {
           >{t('save-creation-subsection-title-upload')}</Styled.h2>
 
           <div sx={{ margin: 'auto' }}>
-            { uploadBox }
+            {uploadBox}
           </div>
         </div>
 
@@ -222,7 +241,7 @@ export default function SaveCreation(props) {
           disabled: false,
         }}
       >
-        { !possiblyDone ? null : (
+        {!possiblyDone ? null : (
           <Button
             sx={{ whiteSpace: 'nowrap' }}
             title={t('save-creation-new-recording')}
@@ -267,12 +286,12 @@ const ConnectionUnconfiguredWarning = () => {
     <Notification key="opencast-connection" isDanger>
       <Trans i18nKey="warning-missing-connection-settings">
         Warning.
-        <Link
-          to={{ pathname: "/settings", search: location.search }}
+        <Styled.a
+          href="mailto:mediatechnologies@manchester.ac.uk"
           sx={{ variant: 'styles.a', color: '#ff2' }}
         >
           settings
-        </Link>
+        </Styled.a>
       </Trans>
     </Notification>
   );
@@ -282,13 +301,37 @@ const UploadForm = ({ uploadState, handleUpload }) => {
   const { t } = useTranslation();
   const opencast = useOpencast();
   const dispatch = useDispatch();
-  const { recordings, title, presenter } = useStudioState();
+  const settings = useSettings();
+  const { recordings, title, presenter, email, series, visibility, edit } = useStudioState();
+
+
+  console.log(title, presenter, email, series, visibility, edit);
 
   function handleInputChange(event) {
     const target = event.target;
+
+    let value = target.value;
+    if (target.tagName === 'SELECT') {
+      value = {
+        key: target.value,
+        value: target.options[target.selectedIndex].text,
+      }
+      }
+
+    if (target.type === 'checkbox') {
+      value = target.checked;
+    }
+
     dispatch({
-      type: { title: 'UPDATE_TITLE', presenter: 'UPDATE_PRESENTER' }[target.name],
-      payload: target.value,
+      type: {
+        title: 'UPDATE_TITLE',
+        presenter: 'UPDATE_PRESENTER',
+        email: 'UPDATE_EMAIL',
+        series: 'UPDATE_SERIES',
+        visibility: 'UPDATE_VISIBILITY',
+        edit: 'UPDATE_EDIT'
+      }[target.name],
+      payload: value,
     });
 
     if (target.name === 'presenter') {
@@ -298,12 +341,17 @@ const UploadForm = ({ uploadState, handleUpload }) => {
 
   // If the user has not yet changed the value of the field and the last used
   // presenter name is used in local storage, use that.
-  const presenterValue = presenter || window.localStorage.getItem(LAST_PRESENTER_KEY) || '';
+  const presenterValue = presenter || window.localStorage.getItem(LAST_PRESENTER_KEY) || settings.user?.name || '';
   useEffect(() => {
     if (presenterValue !== presenter) {
       dispatch({ type: 'UPDATE_PRESENTER', payload: presenterValue });
     }
   });
+
+  const emailValue = settings.user?.email;
+  if (emailValue !== email) {
+    dispatch({type: 'UPDATE_EMAIL', payload: emailValue });
+  }
 
   const buttonLabel = !opencast.prettyServerUrl()
     ? t('save-creation-button-upload')
@@ -313,7 +361,7 @@ const UploadForm = ({ uploadState, handleUpload }) => {
           backgroundColor: 'rgba(0, 0, 0, 0.1)',
           borderRadius: '5px',
           padding: '1px 3px',
-        }}>{{server: opencast.prettyServerUrl()}}</code>
+        }}>{{ server: opencast.prettyServerUrl() }}</code>
       </Trans>
     );
 
@@ -337,17 +385,68 @@ const UploadForm = ({ uploadState, handleUpload }) => {
         />
       </FormField>
 
+      <FormField label={t('save-creation-label-email')}>
+        <Input
+          name="email"
+          autoComplete="off"
+          defaultValue={email}
+          onChange={handleInputChange}
+          type="email"
+        />
+      </FormField>
+
+      <FormField label={t('save-creation-label-series')}>
+        <select
+          sx={{ variant: 'styles.select' }}
+          name="series"
+          defaultValue={series.id}
+          onChange={handleInputChange}
+        >
+          <option value="-1">Please select...</option>
+          {settings.seriesList?.map(s => (
+            <option value={s.id} key={s.id}>
+              {s.title}
+            </option>
+          ))}
+        </select>
+      </FormField>
+
+      <FormField label={t('save-creation-label-visibility')}>
+        <select
+          sx={{ variant: 'styles.select' }}
+          name="visibility"
+          defaultValue={visibility.id}
+          onChange={handleInputChange}
+        >
+          <option value="-1">Please select...</option>
+          {settings.visibilityList.map(v => (
+            <option value={v.id} key={v.id}>
+              {v.name}
+            </option>
+          ))}
+        </select>
+      </FormField>
+
+      <FormField label={t('save-creation-label-edit')}>
+        <input
+          name="edit"
+          defaultChecked={edit}
+          onChange={handleInputChange}
+          type="checkbox"
+        />
+      </FormField>
+
       <Button
         title={t('save-creation-button-upload')}
         onClick={handleUpload}
         disabled={recordings.length === 0}
       >
         <FontAwesomeIcon icon={faUpload} />
-        { buttonLabel }
+        {buttonLabel}
       </Button>
 
       <Box sx={{ mt: 2 }}>
-        { uploadState.state === STATE_ERROR && (
+        {uploadState.state === STATE_ERROR && (
           <Notification isDanger>{uploadState.error}</Notification>
         )}
       </Box>
@@ -398,7 +497,7 @@ const UploadProgress = ({ currentProgress, secondsLeft }) => {
         </Text>
       </div>
       <Progress max={1} value={currentProgress} variant='styles.progress'>
-        { roundedPercent }
+        {roundedPercent}
       </Progress>
       <Text variant='text' sx={{ textAlign: 'center', mt: 2 }}>{t('upload-notification')}</Text>
     </React.Fragment>
@@ -408,6 +507,7 @@ const UploadProgress = ({ currentProgress, secondsLeft }) => {
 // Shown if the upload was successful. A big green checkmark and a text.
 const UploadSuccess = () => {
   const { t } = useTranslation();
+  const { edit } = useStudioState();
 
   return (
     <React.Fragment>
@@ -421,7 +521,7 @@ const UploadSuccess = () => {
         <FontAwesomeIcon icon={faCheckCircle} size="4x" />
       </div>
       <Text variant='text' sx={{ textAlign: 'center' }}>{t('message-upload-complete')}</Text>
-      <Text sx={{ textAlign: 'center', mt: 2 }}>{t('message-upload-complete-explanation')}</Text>
+      <Text sx={{ textAlign: 'center', mt: 2 }}>{edit ? t('message-upload-complete-explanation-edit') : t('message-upload-complete-explanation')}</Text>
     </React.Fragment>
   );
 }

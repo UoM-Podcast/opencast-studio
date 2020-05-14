@@ -6,6 +6,7 @@ import equal from 'fast-deep-equal';
 import Mustache from 'mustache';
 
 import { recordingFileName } from './util.js';
+import { db_addVideoDetails } from './manchester.js';
 
 
 // The server URL was not specified.
@@ -250,7 +251,11 @@ export class Opencast {
       );
 
       // Finalize/ingest media package
-      await this.finishIngest({ mediaPackage, uploadSettings });
+      const workflow = await this.finishIngest({ mediaPackage, uploadSettings })
+        .then(response => response.text());
+
+      // Add to Manchester video database
+      await db_addVideoDetails(mediaPackage, workflow, uploadSettings);
 
       return true;
     } catch(e) {
@@ -263,8 +268,11 @@ export class Opencast {
   // via `ingest/addDCCatalog`. Do not call this method outside of `upload`!
   async addDcCatalog({ mediaPackage, title, creator, uploadSettings }) {
     const seriesId = uploadSettings?.seriesId;
+    const email = uploadSettings.metaData?.email;
+    const source = uploadSettings?.ingestInfo.series.source ?? '';
+    const audience = uploadSettings?.ingestInfo.audience ?? '';
 
-    const dcc = dcCatalog({ creator, title, seriesId });
+    const dcc = dcCatalog({ creator, title, seriesId, email, source, audience });
     const body = new FormData();
     body.append('mediaPackage', mediaPackage);
     body.append('dublinCore', dcc);
@@ -366,13 +374,26 @@ export class Opencast {
   // method outside of `upload`!
   async finishIngest({ mediaPackage, uploadSettings }) {
     const workflowId = uploadSettings?.workflowId;
+    const wf_properties = uploadSettings?.ingestInfo.wf_properties ?? [];
+
+    const edit = uploadSettings.metaData?.edit;
+    const email = uploadSettings.metaData?.email;
+    wf_properties.push({'key': 'editRecording', 'value': edit});
+    if (edit) {
+      wf_properties.push({'key': 'emailAddresses', 'value': email});
+    }
 
     const body = new FormData();
     body.append('mediaPackage', mediaPackage);
     if (workflowId) {
       body.append('workflowDefinitionId', workflowId);
     }
-    await this.request("ingest/ingest", { method: 'post', body: body });
+    if (wf_properties) {
+      wf_properties.forEach(prop => {
+        body.append(prop.key, prop.value);
+      });
+    }
+    return await this.request("ingest/ingest", { method: 'post', body: body });
   }
 
   // Returns the current state of the connection to the OC server.
@@ -492,7 +513,7 @@ const escapeString = s => {
   return new XMLSerializer().serializeToString(new Text(s));
 }
 
-const dcCatalog = ({ creator, title, seriesId }) => {
+const dcCatalog = ({ creator, title, seriesId, email, source, audience }) => {
   const seriesLine = seriesId
     ? `<dcterms:isPartOf>${escapeString(seriesId)}</dcterms:isPartOf>`
     : '';
@@ -505,6 +526,9 @@ const dcCatalog = ({ creator, title, seriesId }) => {
           ${escapeString(new Date(Date.now()).toISOString())}
         </dcterms:created>
         <dcterms:creator>${escapeString(creator)}</dcterms:creator>
+        <dcterms:mediator>${escapeString(email)}</dcterms:mediator>
+        <dcterms:source>${escapeString(source)}</dcterms:source>
+        <dcterms:audience>${escapeString(audience)}</dcterms:audience>
         <dcterms:extent xsi:type="dcterms:ISO8601">PT5.568S</dcterms:extent>
         <dcterms:title>${escapeString(title)}</dcterms:title>
         <dcterms:spatial>Opencast Studio</dcterms:spatial>

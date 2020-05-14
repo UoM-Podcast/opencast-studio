@@ -47,11 +47,12 @@ const base = {
   colors: {
     text: '#000',
     background: '#fff',
-    primary: '#47af7a',
+    primary: '#6b2c90',
     secondary: '#30c',
     muted: '#888888',
-    highlight: '#3498db',
+    highlight: '#ac6cd2',
     error: '#f14668',
+    purple: ['#6b2c90', '#3b1850', '#ac6cd2'],
     gray: ['#363636', '#666666', '#aaaaaa', '#dddddd', '#f5f5f5'],
     videoOverlay: 'rgba(255, 255, 255, 0.2)'
   },
@@ -206,7 +207,7 @@ const base = {
     },
     progress: {
       bg: '#ebebeb',
-      color: '#4ab57f',
+      color: 'purple.0',
       height: '8px',
     }
   },
