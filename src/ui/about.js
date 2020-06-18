@@ -6,7 +6,6 @@ import { Container } from '@theme-ui/components';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGlobeEurope, faEnvelope, faPhone } from '@fortawesome/free-solid-svg-icons';
 
-
 function LegalNotices() {
   return (
     <article>
@@ -148,6 +147,32 @@ function About(props) {
             </Styled.p>
           </React.Fragment>
         )}
+
+        <Styled.h2>Credits</Styled.h2>
+        <Styled.p>
+          Thanks to the following people and institutions for contributing to this project:
+        </Styled.p>
+        <ul>
+          <li>
+            <Styled.a href="https://github.com/slampunk">Duncan Smith</Styled.a> for starting this
+            project
+          </li>
+          <li>
+            <Styled.a href="https://github.com/cilt-uct">University of Cape Town (CILT)</Styled.a>
+            {' '}for letting Duncan start the project
+          </li>
+          <li>
+            <Styled.a href="https://ethz.ch">ETH Zürich</Styled.a> for financial support and
+            testing
+          </li>
+          <li>
+            <Styled.a href="https://github.com/elan-ev">ELAN e.V.</Styled.a> for the re-implementation
+            and the ongoing development
+          </li>
+          <li>
+            And many members from the Opencast community who helped along the way.
+          </li>
+        </ul>
 
         { process.env.REACT_APP_INCLUDE_LEGAL_NOTICES === '1' && <LegalNotices /> }
 

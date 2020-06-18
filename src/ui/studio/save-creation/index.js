@@ -3,13 +3,31 @@
 import { jsx, Styled, Progress } from 'theme-ui';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheckCircle, faUpload, faRedoAlt } from '@fortawesome/free-solid-svg-icons';
+import {
+  faCheckCircle,
+  faUpload,
+  faRedoAlt,
+  faExclamationTriangle,
+} from '@fortawesome/free-solid-svg-icons';
 import { Button, Box, Container, Spinner, Text } from '@theme-ui/components';
-import React, { useEffect } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Trans, useTranslation } from 'react-i18next';
+import { usePageVisibility } from 'react-page-visibility';
 
-import { useOpencast, STATE_INCORRECT_LOGIN } from '../../../opencast';
+import {
+  useOpencast,
+  STATE_UNCONFIGURED,
+  STATE_CONNECTED,
+  STATE_NETWORK_ERROR,
+  STATE_INCORRECT_LOGIN,
+  STATE_RESPONSE_NOT_OK,
+  STATE_INVALID_RESPONSE,
+  UPLOAD_SUCCESS,
+  UPLOAD_NETWORK_ERROR,
+  UPLOAD_NOT_AUTHORIZED,
+  UPLOAD_UNEXPECTED_RESPONSE,
+} from '../../../opencast';
 import { useSettings } from '../../../settings';
 import {
   useDispatch,
@@ -28,7 +46,7 @@ import RecordingPreview from './recording-preview';
 
 import { getIngestInfo, isCourseId } from '../../../manchester';
 
-const LAST_PRESENTER_KEY = 'lastPresenter';
+const LAST_PRESENTER_KEY = 'ocStudioLastPresenter';
 
 const Input = props => <input sx={{ variant: 'styles.input' }} {...props} />;
 
@@ -38,7 +56,7 @@ export default function SaveCreation(props) {
   const settings = useSettings();
   const { t } = useTranslation();
   const opencast = useOpencast();
-  const { recordings, upload: uploadState, title, presenter, email, series, visibility, edit } = useStudioState();
+  const { recordings, upload: uploadState, title, presenter, start, end, email, series, visibility, edit } = useStudioState();
   const dispatch = useDispatch();
 
   function handleBack() {
@@ -103,10 +121,14 @@ export default function SaveCreation(props) {
         return;
       }
 
-      const lastProgress = progressHistory[progressHistory.length - 1];
-      const timeSinceLastUpdate = Date.now() - (lastProgress?.timestamp || 0);
-      if (timeSinceLastUpdate > 3000) {
-        onProgress(lastProgress.progress)
+      if (!progressHistory.length) {
+        onProgress(0);
+      } else {
+        const lastProgress = progressHistory[progressHistory.length - 1];
+        const timeSinceLastUpdate = Date.now() - lastProgress.timestamp;
+        if (timeSinceLastUpdate > 3000) {
+            onProgress(lastProgress.progress);
+        }
       }
     }, 1000);
 
@@ -142,27 +164,32 @@ export default function SaveCreation(props) {
       timestamp: Date.now(),
       progress: 0,
     });
-    const success = await opencast.upload({
+    const result = await opencast.upload({
       recordings: recordings.filter(Boolean),
       title,
       creator: presenter,
+      start,
+      end,
       uploadSettings: settings.upload,
       onProgress,
     });
     progressHistory = [];
 
-    if (success) {
-      dispatch({ type: 'UPLOAD_SUCCESS' });
-    } else {
-      switch (opencast.getState()) {
-        case STATE_INCORRECT_LOGIN:
-          dispatch({ type: 'UPLOAD_FAILURE', payload: t('message-login-failed') });
-          break;
-        default:
-          // TODO: this needs a better message and maybe some special cases.
-          dispatch({ type: 'UPLOAD_FAILURE', payload: t('message-server-unreachable') });
-          break;
-      }
+    switch (result) {
+      case UPLOAD_SUCCESS:
+        dispatch({ type: 'UPLOAD_SUCCESS' });
+        break;
+      case UPLOAD_NETWORK_ERROR:
+        dispatch({ type: 'UPLOAD_ERROR', payload: t('save-creation-upload-network-error') });
+        break;
+      case UPLOAD_NOT_AUTHORIZED:
+        dispatch({ type: 'UPLOAD_ERROR', payload: t('save-creation-upload-not-authorized') });
+        break;
+      case UPLOAD_UNEXPECTED_RESPONSE:
+        dispatch({ type: 'UPLOAD_ERROR', payload: t('save-creation-upload-invalid-response') });
+        break;
+      default: // including UPLOAD_UNKNOWN_ERROR
+        dispatch({ type: 'UPLOAD_ERROR', payload: t('save-creation-upload-unknown-error') });
     }
   }
 
@@ -175,11 +202,15 @@ export default function SaveCreation(props) {
   };
 
   const allDownloaded = recordings.every(rec => rec.downloaded);
-  const possiblyDone = uploadState.state === STATE_UPLOADED || allDownloaded;
+  const possiblyDone = (uploadState.state === STATE_UPLOADED || allDownloaded)
+    && uploadState.state !== STATE_UPLOADING;
+  const hideBack = uploadState.state !== STATE_NOT_UPLOADED || allDownloaded;
 
   // Depending on the state, show a different thing in the upload box.
   const uploadBox = (() => {
-    if (!opencast.isReadyToUpload() && uploadState.state === STATE_NOT_UPLOADED) {
+    const showUnconfiguredWarning = uploadState.state === STATE_NOT_UPLOADED
+      && (opencast.getState() === STATE_UNCONFIGURED || opencast.getState() === STATE_CONNECTED);
+    if (showUnconfiguredWarning) {
       return <ConnectionUnconfiguredWarning />;
     }
 
@@ -228,7 +259,7 @@ export default function SaveCreation(props) {
             sx={{ pb: 1, borderBottom: theme => `1px solid ${theme.colors.gray[2]}` }}
           >{t('save-creation-subsection-title-download')}</Styled.h2>
 
-          <DownloadBox recordings={recordings} dispatch={dispatch} {...{ title, presenter }} />
+          <DownloadBox dispatch={dispatch} {...{ title, presenter }} />
         </div>
       </div>
 
@@ -236,7 +267,7 @@ export default function SaveCreation(props) {
 
       <ActionButtons
         next={null}
-        prev={possiblyDone ? null : {
+        prev={hideBack ? null : {
           onClick: handleBack,
           disabled: false,
         }}
@@ -256,26 +287,40 @@ export default function SaveCreation(props) {
   );
 }
 
-const DownloadBox = ({ recordings, dispatch, presenter, title }) => (
-  <div sx={{
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: ['center', 'center', 'start'],
-    flexWrap: 'wrap',
-  }}>
-    {recordings.length === 0 ? <Spinner /> : (
-      recordings.map((recording, index) => (
-        <RecordingPreview
-          key={index}
-          recording={recording}
-          presenter={presenter}
-          title={title}
-          onDownload={() => dispatch({ type: 'MARK_DOWNLOADED', payload: index })}
-        />
-      ))
-    )}
-  </div>
-);
+const DownloadBox = ({ presenter, title }) => {
+  const { t } = useTranslation();
+  const dispatch = useDispatch();
+  const { recordings, start, end } = useStudioState();
+
+  return (
+    <Fragment>
+      { (start !== null || end !== null) && (
+        <Notification sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <FontAwesomeIcon icon={faExclamationTriangle} sx={{ fontSize: '26px', mb: 3 }} />
+          <p sx={{ m: 0 }}>{ t('save-creation-download-cut-warning') }</p>
+        </Notification>
+      )}
+      <div sx={{
+        display: 'flex',
+        flexDirection: 'row',
+        justifyContent: ['center', 'center', 'start'],
+        flexWrap: 'wrap',
+      }}>
+        {recordings.length === 0 ? <Spinner /> : (
+          recordings.map((recording, index) => (
+            <RecordingPreview
+              key={index}
+              recording={recording}
+              presenter={presenter}
+              title={title}
+              onDownload={() => dispatch({ type: 'MARK_DOWNLOADED', payload: index })}
+            />
+          ))
+        )}
+      </div>
+    </Fragment>
+  );
+}
 
 // Shown if there is no working Opencast connection. Shows a warning and a link
 // to settings.
@@ -295,7 +340,7 @@ const ConnectionUnconfiguredWarning = () => {
       </Trans>
     </Notification>
   );
-}
+};
 
 const UploadForm = ({ uploadState, handleUpload }) => {
   const { t } = useTranslation();
@@ -366,7 +411,9 @@ const UploadForm = ({ uploadState, handleUpload }) => {
     );
 
   return (
-    <React.Fragment>
+    <Fragment>
+      <NotConnectedWarning />
+
       <FormField label={t('save-creation-label-title')}>
         <Input
           name="title"
@@ -450,9 +497,101 @@ const UploadForm = ({ uploadState, handleUpload }) => {
           <Notification isDanger>{uploadState.error}</Notification>
         )}
       </Box>
-    </React.Fragment>
+    </Fragment>
   );
-}
+};
+
+const NotConnectedWarning = () => {
+  const location = useLocation();
+  const opencast = useOpencast();
+  const { t } = useTranslation();
+  const isVisible = usePageVisibility();
+
+  // In an error state, we are retrying every 5 seconds. We only busy poll if
+  // the page is actually active to not waste resources.
+  const [retrying, setRetrying] = useState(false);
+  useEffect(() => {
+    if (!opencast.isReadyToUpload() && !retrying && isVisible) {
+      setTimeout(async () => {
+        setRetrying(true);
+        await opencast.refreshConnection();
+        setRetrying(false);
+      }, 5000);
+    }
+  })
+
+  // If the connection is established, we don't show the warning.
+  if (opencast.isReadyToUpload()) {
+    return null;
+  }
+
+  // Piece together the warning message depending on the situation.
+  let problem;
+  let onceResolved;
+  switch (opencast.getState()) {
+    case STATE_NETWORK_ERROR:
+      problem = t('save-creation-warn-unreachable');
+      onceResolved = t('save-creation-warn-once-reestablished');
+      break;
+    case STATE_INCORRECT_LOGIN:
+      if (opencast.isLoginProvided()) {
+        const referrer = document.referrer;
+        problem = (
+          <Trans i18nKey='save-creation-warn-session-expired'>
+            Foo
+            {
+              (referrer && !referrer.includes(window.origin || ''))
+                ? <Styled.a href={referrer} target='_blank' sx={{ color: '#ff2' }}>bar</Styled.a>
+                : <Fragment>bar</Fragment>
+            }
+            baz
+          </Trans>
+        );
+        t('save-creation-warn-session-expired');
+        onceResolved = t('save-creation-warn-once-refreshed');
+      } else {
+        problem = (
+          <Trans i18nKey='save-creation-warn-login-failed'>
+            Failed.
+            <Link
+              to={{ pathname: "/settings", search: location.search }}
+              sx={{ variant: 'styles.a', color: '#ff2' }}
+            >
+              settings
+            </Link>
+          </Trans>
+        );
+        onceResolved = t('save-creation-warn-once-logged-in');
+      }
+      break;
+    case STATE_RESPONSE_NOT_OK:
+    case STATE_INVALID_RESPONSE:
+      problem = t('save-creation-warn-server-problem')
+        + ' ' + t('save-creation-warn-download-hint');
+      break;
+    default:
+      problem = 'Internal error :-(';
+  }
+
+  return (
+    <Notification isDanger>
+      <div sx={{ textAlign: 'center', fontSize: '40px', lineHeight: 1.3 }}>
+        { retrying
+          ? <Spinner size='40' />
+          : <FontAwesomeIcon icon={faExclamationTriangle} />
+        }
+      </div>
+      <p sx={{ mb: 0 }}>{ problem }</p>
+      { onceResolved && (
+        <p sx={{ mb: 0 }}>
+          { onceResolved }
+          { onceResolved && ' ' }
+          { t('save-creation-warn-download-hint') }
+        </p>
+      )}
+    </Notification>
+  );
+};
 
 // Shown during upload. Shows a progressbar, the percentage of data already
 // uploaded and `secondsLeft` nicely formatted as human readable time.
@@ -476,17 +615,17 @@ const UploadProgress = ({ currentProgress, secondsLeft }) => {
   } else if (secondsLeft < 90) {
     prettyTime = t('upload-time-a-minute');
   } else if (secondsLeft < 45 * 60) {
-    prettyTime = `${Math.round(secondsLeft / 60)} ${t('upload-time-minutes')}`
+    prettyTime = `${Math.round(secondsLeft / 60)} ${t('upload-time-minutes')}`;
   } else if (secondsLeft < 90 * 60) {
     prettyTime = t('upload-time-an-hour');
   } else if (secondsLeft < 24 * 60 * 60) {
-    prettyTime = `${Math.round(secondsLeft / (60 * 60))} ${t('upload-time-hours')}`
+    prettyTime = `${Math.round(secondsLeft / (60 * 60))} ${t('upload-time-hours')}`;
   } else {
     prettyTime = null;
   }
 
   return (
-    <React.Fragment>
+    <Fragment>
       <div sx={{ display: 'flex', mb: 2 }}>
         <Text variant='text'>{roundedPercent}%</Text>
         <div sx={{ flex: 1 }} />
@@ -500,9 +639,9 @@ const UploadProgress = ({ currentProgress, secondsLeft }) => {
         {roundedPercent}
       </Progress>
       <Text variant='text' sx={{ textAlign: 'center', mt: 2 }}>{t('upload-notification')}</Text>
-    </React.Fragment>
+    </Fragment>
   );
-}
+};
 
 // Shown if the upload was successful. A big green checkmark and a text.
 const UploadSuccess = () => {
@@ -510,7 +649,7 @@ const UploadSuccess = () => {
   const { edit } = useStudioState();
 
   return (
-    <React.Fragment>
+    <Fragment>
       <div sx={{
         display: 'flex',
         justifyContent: 'center',
@@ -522,6 +661,6 @@ const UploadSuccess = () => {
       </div>
       <Text variant='text' sx={{ textAlign: 'center' }}>{t('message-upload-complete')}</Text>
       <Text sx={{ textAlign: 'center', mt: 2 }}>{edit ? t('message-upload-complete-explanation-edit') : t('message-upload-complete-explanation')}</Text>
-    </React.Fragment>
+    </Fragment>
   );
-}
+};

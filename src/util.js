@@ -66,7 +66,7 @@ export const mimeToExt = mime => {
   // If we know nothing, our best guess is webm; except for Safari which does
   // not understand webm: there it's mp4.
   return onSafari() ? "mp4" : "webm";
-}
+};
 
 // Returns a suitable filename for a recording with the MIME type `mime` and the
 // given `flavor`. The latter should be either `presenter` or `presentation`.
@@ -79,7 +79,7 @@ export const recordingFileName = ({ mime, flavor, title, presenter }) => {
 };
 
 const nowAsString = () => {
-  const pad2 = n => n >= 10 ? '' + n : '0' + n;
+  const pad2 = n => (n >= 10 ? '' : '0') + n;
 
   const now = new Date();
   return ''
@@ -95,9 +95,9 @@ export const userHasWebcam = async () => {
     return false;
   }
 
-  const devices = await navigator.mediaDevices.enumerateDevices()
+  const devices = await navigator.mediaDevices.enumerateDevices();
   return devices.some(d => d.kind === 'videoinput');
-}
+};
 
 // Decodes the given hex string into a new string. If the given string contains
 // characters that are not hexadecimal digits or if the string's length is odd,
@@ -126,4 +126,34 @@ export const decodeHexString = hex => {
   }
 
   return new TextDecoder().decode(bytes);
+};
+
+// Returns a promise that resolves after `ms` milliseconds.
+export const sleep = ms => new Promise((resolve, reject) => setTimeout(resolve, ms));
+
+// Obtains all media devices and stores them into the global state.
+export const queryMediaDevices = async (dispatch) => {
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  dispatch({ type: 'UPDATE_MEDIA_DEVICES', payload: devices });
+};
+
+// Filters the `allDevices` array such that only devices with the given `kind`
+// are included and no two devices have the same `deviceId`.
+export const getUniqueDevices = (allDevices, kind) => {
+  let out = [];
+  for (const d of allDevices) {
+    // Only interested in one kind of device.
+    if (d.kind !== kind) {
+      continue;
+    }
+
+    // If we already have a device with that device ID, we ignore it.
+    if (out.some(od => od.deviceId === d.deviceId)) {
+      continue;
+    }
+
+    out.push(d);
+  }
+
+  return out;
 };

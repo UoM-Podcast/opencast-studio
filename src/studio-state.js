@@ -5,10 +5,8 @@ import { createContext, useContext, useReducer } from 'react';
 import { isDisplayCaptureSupported, isUserCaptureSupported } from './util';
 
 
-export const MICROPHONE = 'microphone';
-export const MICROPHONE_REQUEST = 'microphone_request';
-export const NO_AUDIO = 'no-audio';
-export const NONE = 'none';
+export const AUDIO_SOURCE_MICROPHONE = 'microphone';
+export const AUDIO_SOURCE_NONE = 'none';
 
 export const VIDEO_SOURCE_BOTH = 'both';
 export const VIDEO_SOURCE_DISPLAY = 'display';
@@ -22,6 +20,8 @@ export const STATE_ERROR = 'error';
 
 
 const initialState = () => ({
+  mediaDevices: [],
+
   audioAllowed: null,
   audioStream: null,
   audioUnexpectedEnd: false,
@@ -38,7 +38,7 @@ const initialState = () => ({
   userSupported: isUserCaptureSupported(),
 
   videoChoice: VIDEO_SOURCE_NONE,
-  audioChoice: NONE,
+  audioChoice: AUDIO_SOURCE_NONE,
 
   isRecording: false,
   prematureRecordingEnd: false,
@@ -51,6 +51,9 @@ const initialState = () => ({
   visibility: {key: '-1', value: ''},
   edit: false,
 
+  start: null,
+  end: null,
+
   upload: {
     error: null,
     state: STATE_NOT_UPLOADED,
@@ -61,6 +64,9 @@ const initialState = () => ({
 
 const reducer = (state, action) => {
   switch (action.type) {
+    case 'UPDATE_MEDIA_DEVICES':
+      return { ...state, mediaDevices: action.payload };
+
     case 'CHOOSE_AUDIO':
       return { ...state, audioChoice: action.payload };
 
@@ -140,9 +146,6 @@ const reducer = (state, action) => {
     case 'UPLOAD_ERROR':
       return { ...state, upload: { ...state.upload, error: action.payload, state: STATE_ERROR } };
 
-    case 'UPLOAD_FAILURE':
-      return { ...state, upload: { ...state.upload, error: action.payload, state: STATE_ERROR } };
-
     case 'UPLOAD_REQUEST':
       return { ...state, upload: { ...state.upload, error: null, state: STATE_UPLOADING } };
 
@@ -179,6 +182,11 @@ const reducer = (state, action) => {
 
     case 'UPDATE_EDIT':
       return { ...state, edit: action.payload };
+    case 'UPDATE_START':
+      return { ...state, start: action.payload };
+
+    case 'UPDATE_END':
+      return { ...state, end: action.payload };
 
     case 'RESET':
       return initialState();
