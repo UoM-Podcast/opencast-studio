@@ -1,6 +1,6 @@
 {
-  "short_name": "Opencast Studio",
-  "name": "Web-based recording studio for Opencast",
+  "short_name": "Podcast Studio",
+  "name": "Web-based recording studio for Podcasting",
   "icons": [
     {
       "src": "favicon.ico",

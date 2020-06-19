@@ -540,9 +540,7 @@ const NotConnectedWarning = () => {
           <Trans i18nKey='save-creation-warn-session-expired'>
             Foo
             {
-              (referrer && !referrer.includes(window.origin || ''))
-                ? <Styled.a href={referrer} target='_blank' sx={{ color: '#ff2' }}>bar</Styled.a>
-                : <Fragment>bar</Fragment>
+                <Styled.a href={window.location} target='_blank' sx={{ color: '#ff2' }}>bar</Styled.a>
             }
             baz
           </Trans>
