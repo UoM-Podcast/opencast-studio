@@ -73,6 +73,7 @@ export default function VideoSetup({ nextStep, userHasWebcam }) {
       <Text>{t('error-lost-video-stream')}</Text>
     </Notification>
   );
+  const switchSourcesWarning = <Styled.p sx={{textAlign: 'center' }}>{ t('sources-no-switching') }</Styled.p>;
 
   const userInput = {
     isDesktop: false,
@@ -109,7 +110,7 @@ export default function VideoSetup({ nextStep, userHasWebcam }) {
       title = t('sources-video-user-selected');
       hideActionButtons = !userStream && state.userAllowed !== false;
       body = <SourcePreview
-        warnings={[userWarning, unexpectedEndWarning]}
+        warnings={[userWarning, unexpectedEndWarning, switchSourcesWarning]}
         inputs={[userInput]}
       />;
       break;
@@ -118,7 +119,7 @@ export default function VideoSetup({ nextStep, userHasWebcam }) {
       title = t('sources-video-display-selected');
       hideActionButtons = !displayStream && state.displayAllowed !== false;
       body = <SourcePreview
-        warnings={[displayWarning, unexpectedEndWarning]}
+        warnings={[displayWarning, unexpectedEndWarning, switchSourcesWarning]}
         inputs={[displayInput]}
       />;
       break;
@@ -128,7 +129,7 @@ export default function VideoSetup({ nextStep, userHasWebcam }) {
       hideActionButtons = (!userStream && state.userAllowed !== false)
         || (!displayStream && state.displayAllowed !== false);
       body = <SourcePreview
-        warnings={[displayWarning, userWarning, unexpectedEndWarning]}
+        warnings={[displayWarning, userWarning, unexpectedEndWarning, switchSourcesWarning]}
         inputs={[displayInput, userInput]}
       />;
       break;

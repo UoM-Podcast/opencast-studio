@@ -62,6 +62,13 @@ function About(props) {
           then be uploaded to the Podcast Video Portal.
         </Styled.p>
         <Styled.p>
+          For more information on using Podcast Studio, see&nbsp;
+          <Styled.a target="_blank"
+            href="https://www.mypodcasts.manchester.ac.uk/staff-faqs/record-podcast/#podcast-studio">
+            this FAQ
+          </Styled.a>
+        </Styled.p>
+        <Styled.p>
           Podcast Studio recordings can be managed from the My Videos tab on the
           Video Portal, just like uploaded videos.
         </Styled.p>

@@ -90,7 +90,7 @@ const RecordingPreview = ({ onDownload, recording, title, presenter }) => {
       </div>
       <Button
         as="a"
-        title={t('save-creation-download-button')}
+        title={t('save-creation-download-button', {flavor})}
         sx={{
           width: '100%',
           maxWidth: '215px',
@@ -104,7 +104,7 @@ const RecordingPreview = ({ onDownload, recording, title, presenter }) => {
         onClick={onDownload}
       >
         <FontAwesomeIcon icon={faDownload} />
-        {t('save-creation-download-button')}
+        {t('save-creation-download-button', {flavor})}
         {' '}({ prettyFileSize })
       </Button>
     </div>

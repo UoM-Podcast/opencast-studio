@@ -294,12 +294,13 @@ const DownloadBox = ({ presenter, title }) => {
 
   return (
     <Fragment>
-      { (start !== null || end !== null) && (
-        <Notification sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <FontAwesomeIcon icon={faExclamationTriangle} sx={{ fontSize: '26px', mb: 3 }} />
-          <p sx={{ m: 0 }}>{ t('save-creation-download-cut-warning') }</p>
-        </Notification>
-      )}
+      <Notification sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <FontAwesomeIcon icon={faExclamationTriangle} sx={{ fontSize: '26px', mb: 3 }} />
+        { (start !== null || end !== null) && (
+            <p sx={{ textAlign: 'center' }}>{ t('save-creation-download-cut-warning') }</p>
+        )}
+        <p sx={{ textAlign: 'center' }}>{ t('save-creation-download-format-warning') }</p>
+      </Notification>
       <div sx={{
         display: 'flex',
         flexDirection: 'row',
