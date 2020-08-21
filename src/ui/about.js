@@ -64,7 +64,7 @@ function About(props) {
         <Styled.p>
           For more information on using Podcast Studio, see&nbsp;
           <Styled.a target="_blank"
-            href="https://www.mypodcasts.manchester.ac.uk/staff-faqs/record-podcast/#podcast-studio">
+            href="https://www.mypodcasts.manchester.ac.uk/staff-faqs/record-podcast/podcast-studio">
             this FAQ
           </Styled.a>
         </Styled.p>
