@@ -133,6 +133,33 @@ function About(props) {
           </Styled.li>
         </Styled.ol>
 
+        <Styled.h2>Uploading Issues</Styled.h2>
+        <Styled.p>
+          If you encounter the <Styled.em>&quot;connection to podcast server is not fully
+          established&quot;</Styled.em> error when trying to upload your recording,
+          this is because your authentication session has timed out.
+        </Styled.p>
+
+        <Styled.p>
+          If this happens, you should open another browser tab and navigate to the
+          University Central Authentication Service (CAS) <Styled.a target="_blank"
+          href="https://login.manchester.ac.uk/cas/login">login page</Styled.a>.
+          Log in if you are not already, (or log out and back in if necessary).
+        </Styled.p>
+
+        <Styled.p>
+          Return back to the Podcast Studio tab and, in some cases, the browser
+          manages to refresh your authentication status after a few minutes – but
+          if this does not happen, you should save any recordings you have made
+          so they do not get discarded, and then refresh the page.
+        </Styled.p>
+
+        <Styled.p>
+          Saved recordings can be manually uploaded to the Video Portal,
+          further information can be found <Styled.a target="_blank"
+          href="https://www.mypodcasts.manchester.ac.uk/staff-faqs/record-podcast/studio-issues/">here</Styled.a>.
+        </Styled.p>
+
         { process.env.REACT_APP_INCLUDE_LEGAL_NOTICES === '1' && (
           <React.Fragment>
             <Styled.h2>Support</Styled.h2>
@@ -161,19 +188,19 @@ function About(props) {
         </Styled.p>
         <ul>
           <li>
-            <Styled.a href="https://github.com/slampunk">Duncan Smith</Styled.a> for starting this
+            <Styled.a target="_blank" href="https://github.com/slampunk">Duncan Smith</Styled.a> for starting this
             project
           </li>
           <li>
-            <Styled.a href="https://github.com/cilt-uct">University of Cape Town (CILT)</Styled.a>
+            <Styled.a target="_blank" href="https://github.com/cilt-uct">University of Cape Town (CILT)</Styled.a>
             {' '}for letting Duncan start the project
           </li>
           <li>
-            <Styled.a href="https://ethz.ch">ETH Zürich</Styled.a> for financial support and
+            <Styled.a target="_blank" href="https://ethz.ch">ETH Zürich</Styled.a> for financial support and
             testing
           </li>
           <li>
-            <Styled.a href="https://github.com/elan-ev">ELAN e.V.</Styled.a> for the re-implementation
+            <Styled.a target="_blank" href="https://github.com/elan-ev">ELAN e.V.</Styled.a> for the re-implementation
             and the ongoing development
           </li>
           <li>
