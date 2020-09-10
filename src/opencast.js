@@ -511,8 +511,10 @@ export class Opencast {
     const wf_properties = uploadSettings?.ingestInfo.wf_properties ?? [];
 
     const edit = uploadSettings.metaData?.edit;
+    const addSubtitles = uploadSettings.metaData?.addSubtitles;
     const email = uploadSettings.metaData?.email;
     wf_properties.push({'key': 'editRecording', 'value': edit});
+    wf_properties.push({'key': 'addSubtitles', 'value': addSubtitles});
     if (edit) {
       wf_properties.push({'key': 'emailAddresses', 'value': email});
     }
