@@ -50,6 +50,7 @@ const initialState = () => ({
   series: { key: '-1', value: '' },
   visibility: {key: '-1', value: ''},
   edit: false,
+  addSubtitles: true,
 
   start: null,
   end: null,
@@ -182,6 +183,8 @@ const reducer = (state, action) => {
 
     case 'UPDATE_EDIT':
       return { ...state, edit: action.payload };
+    case 'UPDATE_ADDSUBTITLES':
+      return { ...state, addSubtitles: action.payload };
     case 'UPDATE_START':
       return { ...state, start: action.payload };
 

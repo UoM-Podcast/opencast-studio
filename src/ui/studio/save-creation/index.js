@@ -56,7 +56,7 @@ export default function SaveCreation(props) {
   const settings = useSettings();
   const { t } = useTranslation();
   const opencast = useOpencast();
-  const { recordings, upload: uploadState, title, presenter, start, end, email, series, visibility, edit } = useStudioState();
+  const { recordings, upload: uploadState, title, presenter, start, end, email, series, visibility, edit, addSubtitles } = useStudioState();
   const dispatch = useDispatch();
 
   function handleBack() {
@@ -149,6 +149,7 @@ export default function SaveCreation(props) {
         series: series,
         visibility: visibility,
         edit: edit,
+        addSubtitles: addSubtitles,
       }
     };
 
@@ -348,10 +349,10 @@ const UploadForm = ({ uploadState, handleUpload }) => {
   const opencast = useOpencast();
   const dispatch = useDispatch();
   const settings = useSettings();
-  const { recordings, title, presenter, email, series, visibility, edit } = useStudioState();
+  const { recordings, title, presenter, email, series, visibility, edit, addSubtitles } = useStudioState();
 
 
-  console.log(title, presenter, email, series, visibility, edit);
+  console.log(title, presenter, email, series, visibility, edit, addSubtitles);
 
   function handleInputChange(event) {
     const target = event.target;
@@ -362,7 +363,7 @@ const UploadForm = ({ uploadState, handleUpload }) => {
         key: target.value,
         value: target.options[target.selectedIndex].text,
       }
-      }
+    }
 
     if (target.type === 'checkbox') {
       value = target.checked;
@@ -375,7 +376,8 @@ const UploadForm = ({ uploadState, handleUpload }) => {
         email: 'UPDATE_EMAIL',
         series: 'UPDATE_SERIES',
         visibility: 'UPDATE_VISIBILITY',
-        edit: 'UPDATE_EDIT'
+        edit: 'UPDATE_EDIT',
+        addSubtitles: 'UPDATE_ADDSUBTITLES'
       }[target.name],
       payload: value,
     });
@@ -479,6 +481,15 @@ const UploadForm = ({ uploadState, handleUpload }) => {
         <input
           name="edit"
           defaultChecked={edit}
+          onChange={handleInputChange}
+          type="checkbox"
+        />
+      </FormField>
+
+      <FormField label={t('save-creation-label-subs')}>
+        <input
+          name="addSubtitles"
+          defaultChecked={addSubtitles}
           onChange={handleInputChange}
           type="checkbox"
         />
